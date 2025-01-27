@@ -1,27 +1,58 @@
 "use client";
 
-import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
+import {
+  useAbstractClient,
+  useLoginWithAbstract,
+} from "@abstract-foundation/agw-react";
 import { useState } from "react";
-import { verifyMessage } from "viem";
-import { useAccount, useDisconnect, useSignMessage } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
+
+import {
+  formatEIP712DataForVerification,
+  verifyTypedSignature_v4,
+} from "@/utils/eip712helper";
 
 export default function Home() {
   const { login } = useLoginWithAbstract();
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const [signature, setSignature] = useState<`0x${string}` | null>(null);
-  const [isVerified, setIsVerified] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { signMessageAsync } = useSignMessage({});
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
-  const MESSAGE = "Hello from Abstract!";
+  const MESSAGE = "Hello world!";
+
+  const { data: agwClient } = useAbstractClient();
+  // const {} = useVerifyTypedData();
+
+  // const signatureResult = useVerifyTypedData({
+  //   domain: {
+  //     chainId: 1,
+  //     name: "Collab.Land Connect",
+  //     // verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+  //     version: "1",
+  //   },
+  //   types: {
+  //     EIP712Domain: [
+  //       { name: "name", type: "string" },
+  //       { name: "version", type: "string" },
+  //       { name: "chainId", type: "uint256" },
+  //       // { name: 'verifyingContract', type: 'address' },
+  //     ],
+  //     Verify: [{ name: "message", type: "string" }],
+  //   },
+  //   message: { message: MESSAGE },
+  //   primaryType: "Verify",
+  //   address: "0x21deBfAe52C5CEe564e27d0dF2a534C475bc6014",
+  //   signature:
+  //     "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000074b9ae28ec45e3fa11533c7954752597c3de3e7a0000000000000000000000000000000000000000000000000000000000000041589a5c3b0e0f93db8353566a40f2c004477b29b0eebf4e0103eb425df26ad09b1d9df60f9d49b70e191ec97a5273180cb000939a4346b32005f113e0c2709d861c00000000000000000000000000000000000000000000000000000000000000",
+  // });
 
   const handleClick = async () => {
     if (address) {
       disconnect();
       setSignature(null);
-      setIsVerified(null);
       setError(null);
     } else {
       await login();
@@ -29,31 +60,25 @@ export default function Home() {
   };
 
   const handleSignMessage = async () => {
-    const signature = await signMessageAsync({
-      message: MESSAGE,
-    });
+    if (!agwClient) return;
+    const msgParams = formatEIP712DataForVerification({ message: MESSAGE }, 1);
+    const signature = await agwClient.signTypedData(msgParams);
+    console.log("signature", signature);
+
     setSignature(signature);
-    setIsVerified(null);
     setError(null);
-    console.log("Signature:", signature);
   };
 
   const handleVerifyMessage = async () => {
     if (!signature || !address) return;
-    
-    try {
-      setError(null);
-      const isValid = await verifyMessage({
-        address,
-        message: MESSAGE,
-        signature,
-      });
-      setIsVerified(isValid);
-      console.log("Verification result:", isValid);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during verification');
-      setIsVerified(null);
-    }
+    const isVerified = await verifyTypedSignature_v4(
+      address,
+      signature,
+      MESSAGE,
+      1
+    );
+    console.log("isVerified", isVerified);
+    setIsVerified(isVerified);
   };
 
   let content;
@@ -72,7 +97,6 @@ export default function Home() {
               <>
                 <div className="p-4 bg-gray-100 rounded-lg min-w-[300px] text-center">
                   <p className="text-sm text-gray-500 mb-1">Signature:</p>
-                  <p className="font-mono break-all text-sm">{signature}</p>
                 </div>
                 {isVerified !== null && (
                   <div
@@ -104,6 +128,12 @@ export default function Home() {
               >
                 {signature ? "Verify Message" : "Sign Message"}
               </button>
+
+              {error && (
+                <div className="p-4 bg-red-100 text-red-700 rounded-lg min-w-[300px] text-center">
+                  {error}
+                </div>
+              )}
             </div>
           </>
         )}

@@ -21,7 +21,9 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.22.15",
-    "wagmi": "^2.14.9"
+    "wagmi": "^2.14.9",
+    "ethers": "^5.7.0",
+    "@metamask/eth-sig-util": "5.0.2"
   },
   "devDependencies": {
     "@types/node": "^20",

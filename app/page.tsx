@@ -1,101 +1,178 @@
-import Image from "next/image";
+"use client";
+
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
+import { useState } from "react";
+import { verifyMessage } from "viem";
+import { useAccount, useDisconnect, useSignMessage } from "wagmi";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const { login } = useLoginWithAbstract();
+  const { address } = useAccount();
+  const { disconnect } = useDisconnect();
+  const [signature, setSignature] = useState<`0x${string}` | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const { signMessageAsync } = useSignMessage({});
+
+  const MESSAGE = "Hello from Abstract!";
+
+  const handleClick = async () => {
+    if (address) {
+      disconnect();
+      setSignature(null);
+      setIsVerified(null);
+      setError(null);
+    } else {
+      await login();
+    }
+  };
+
+  const handleSignMessage = async () => {
+    const signature = await signMessageAsync({
+      message: MESSAGE,
+    });
+    setSignature(signature);
+    setIsVerified(null);
+    setError(null);
+    console.log("Signature:", signature);
+  };
+
+  const handleVerifyMessage = async () => {
+    if (!signature || !address) return;
+    
+    try {
+      setError(null);
+      const isValid = await verifyMessage({
+        address,
+        message: MESSAGE,
+        signature,
+      });
+      setIsVerified(isValid);
+      console.log("Verification result:", isValid);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred during verification');
+      setIsVerified(null);
+    }
+  };
+
+  let content;
+  if (error) {
+    content = (
+      <>
+        <div className="p-4 bg-red-100 text-red-700 rounded-lg min-w-[300px] text-center mb-4">
+          {error}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        {address && (
+          <>
+            <div className="p-4 bg-gray-100 rounded-lg min-w-[300px] text-center">
+              <p className="font-mono break-all">{address}</p>
+            </div>
+            {signature && (
+              <>
+                <div className="p-4 bg-gray-100 rounded-lg min-w-[300px] text-center">
+                  <p className="text-sm text-gray-500 mb-1">Signature:</p>
+                  <p className="font-mono break-all text-sm">{signature}</p>
+                </div>
+                {isVerified !== null && (
+                  <div
+                    className={`text-center p-2 rounded-md ${
+                      isVerified
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    Signature is {isVerified ? "valid" : "invalid"}
+                  </div>
+                )}
+              </>
+            )}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleClick}
+                className="px-4 py-2 text-white rounded-md transition-colors bg-red-500 hover:bg-red-600 active:bg-red-700"
+              >
+                Disconnect
+              </button>
+              <button
+                onClick={signature ? handleVerifyMessage : handleSignMessage}
+                className={`px-4 py-2 text-white rounded-md transition-colors ${
+                  signature
+                    ? "bg-purple-500 hover:bg-purple-600 active:bg-purple-700"
+                    : "bg-green-500 hover:bg-green-600 active:bg-green-700"
+                }`}
+              >
+                {signature ? "Verify Message" : "Sign Message"}
+              </button>
+            </div>
+          </>
+        )}
+      </>
+    );
+  } else if (address) {
+    content = (
+      <>
+        <div className="p-4 bg-gray-100 rounded-lg min-w-[300px] text-center">
+          <p className="font-mono break-all">{address}</p>
+        </div>
+        {signature && (
+          <>
+            <div className="p-4 bg-gray-100 rounded-lg min-w-[300px] text-center">
+              <p className="text-sm text-gray-500 mb-1">Signature:</p>
+              <p className="font-mono break-all text-sm">{signature}</p>
+            </div>
+            {isVerified !== null && (
+              <div
+                className={`text-center p-2 rounded-md ${
+                  isVerified
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                Signature is {isVerified ? "valid" : "invalid"}
+              </div>
+            )}
+          </>
+        )}
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={handleClick}
+            className="px-4 py-2 text-white rounded-md transition-colors bg-red-500 hover:bg-red-600 active:bg-red-700"
+          >
+            Disconnect
+          </button>
+          <button
+            onClick={signature ? handleVerifyMessage : handleSignMessage}
+            className={`px-4 py-2 text-white rounded-md transition-colors ${
+              signature
+                ? "bg-purple-500 hover:bg-purple-600 active:bg-purple-700"
+                : "bg-green-500 hover:bg-green-600 active:bg-green-700"
+            }`}
+          >
+            {signature ? "Verify Message" : "Sign Message"}
+          </button>
+        </div>
+      </>
+    );
+  } else {
+    content = (
+      <>
+        <div className="p-4 bg-gray-100 rounded-lg min-w-[300px] text-center">
+          <p className="text-gray-500">Not connected</p>
+        </div>
+        <button
+          onClick={handleClick}
+          className="px-4 py-2 text-white rounded-md transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          Login with Abstract
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 min-h-screen">
+      {content}
     </div>
   );
 }

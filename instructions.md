@@ -1,0 +1,1 @@
+- Abstract global wallet doc link <https://docs.abs.xyz/abstract-global-wallet/agw-react/native-integration>

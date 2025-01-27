@@ -7,10 +7,7 @@ import {
 import { useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 
-import {
-  formatEIP712DataForVerification,
-  verifyTypedSignature_v4,
-} from "@/utils/eip712helper";
+import { formatEIP712DataForVerification } from "@/utils/eip712helper";
 
 export default function Home() {
   const { login } = useLoginWithAbstract();
@@ -71,12 +68,8 @@ export default function Home() {
 
   const handleVerifyMessage = async () => {
     if (!signature || !address) return;
-    const isVerified = await verifyTypedSignature_v4(
-      address,
-      signature,
-      MESSAGE,
-      1
-    );
+    // add logic to verify message and print the result
+    const isVerified = false;
     console.log("isVerified", isVerified);
     setIsVerified(isVerified);
   };
